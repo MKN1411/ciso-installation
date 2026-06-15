@@ -1,6 +1,6 @@
 #cloud-config
 # ==============================================================================
-# Cloud-Init Template: Automated Docker & CISO Assistant Provisioning (Private)
+# Cloud-Init Template: Automated Docker, Cloudflare & CISO Assistant Provisioning
 # Target OS: Ubuntu 22.04 LTS / 24.04 LTS (Oracle Cloud VM)
 # ==============================================================================
 
@@ -20,85 +20,8 @@ packages:
   - curl
   - python3
 
-write_files:
-  - path: /home/ubuntu/update_status.py
-    owner: ubuntu:ubuntu
-    permissions: '0755'
-    content: |
-      import sys
-      import os
-      import json
-      import base64
-      import urllib.request
-
-      def main():
-          if len(sys.argv) < 3:
-              print("Usage: update_status.py <status> <message_or_log_file>")
-              sys.exit(1)
-          status = sys.argv[1]
-          log_source = sys.argv[2]
-          
-          if os.path.exists(log_source):
-              with open(log_source, "r", encoding="utf-8", errors="ignore") as f:
-                  log_content = f.read()
-          else:
-              log_content = log_source
-
-          token = "${github_token}"
-          repo = "${github_repo}"
-          if not token or not repo:
-              print("Missing token or repo configuration")
-              sys.exit(1)
-
-          url = f"https://api.github.com/repos/{repo}/contents/setup_status.json"
-          
-          # Get SHA if file exists
-          sha = None
-          req = urllib.request.Request(url, headers={"Authorization": f"token {token}", "Accept": "application/vnd.github+json"})
-          try:
-              with urllib.request.urlopen(req) as response:
-                  res_data = json.loads(response.read().decode())
-                  sha = res_data.get("sha")
-          except Exception:
-              pass
-
-          payload_data = {
-              "status": status,
-              "log": log_content
-          }
-          content_bytes = json.dumps(payload_data).encode("utf-8")
-          content_b64 = base64.b64encode(content_bytes).decode("utf-8")
-
-          body = {
-              "message": f"Setup status: {status}",
-              "content": content_b64
-          }
-          if sha:
-              body["sha"] = sha
-
-          req_put = urllib.request.Request(
-              url,
-              data=json.dumps(body).encode("utf-8"),
-              headers={
-                  "Authorization": f"token {token}",
-                  "Accept": "application/vnd.github+json",
-                  "Content-Type": "application/json"
-              },
-              method="PUT"
-          )
-          try:
-              with urllib.request.urlopen(req_put) as response:
-                  print(f"Status updated successfully: {status}")
-          except Exception as e:
-              print(f"Failed to update status: {e}")
-
-      if __name__ == "__main__":
-          main()
-
 runcmd:
   # All steps run as root via cloud-init. Docker is run with full path.
-  # IMPORTANT: cd does NOT persist between separate runcmd list items.
-  # Therefore all steps that need a working directory are combined in one shell block.
   - |
     set -e
     CISO_DIR="/home/ubuntu/ciso-assistant"
@@ -106,13 +29,142 @@ runcmd:
     LOG="/var/log/cloud-init-ciso-setup.log"
 
     log() { echo "[$(date '+%H:%M:%S')] $*" | tee -a "$LOG"; }
-    update_status() { python3 /home/ubuntu/update_status.py "$1" "$2" 2>>"$LOG" || true; }
+
+    log "=== Step 0: Write status helper script ==="
+    cat << 'EOF' > /home/ubuntu/update_status.py
+import sys
+import os
+import json
+import base64
+import urllib.request
+import re
+
+def get_cloudflare_url():
+    log_path = "/var/log/cloudflared.log"
+    if os.path.exists(log_path):
+        try:
+            with open(log_path, "r", encoding="utf-8", errors="ignore") as f:
+                content = f.read()
+                match = re.search(r"https://[a-zA-Z0-9-]+\.trycloudflare\.com", content)
+                if match:
+                    return match.group(0)
+        except Exception:
+            pass
+    return None
+
+def main():
+    if len(sys.argv) < 3:
+        print("Usage: update_status.py <status> <message_or_log_file>")
+        sys.exit(1)
+    status = sys.argv[1]
+    log_source = sys.argv[2]
+    
+    if os.path.exists(log_source):
+        try:
+            with open(log_source, "r", encoding="utf-8", errors="ignore") as f:
+                log_content = f.read()
+        except Exception as e:
+            log_content = f"Error reading log file: {e}"
+    else:
+        log_content = log_source
+
+    token = os.environ.get("GITHUB_TOKEN")
+    repo = os.environ.get("GITHUB_REPO")
+    if not token or not repo:
+        print("Missing GITHUB_TOKEN or GITHUB_REPO env var")
+        sys.exit(1)
+
+    url = f"https://api.github.com/repos/{repo}/contents/setup_status.json"
+    
+    # Get SHA if file exists to overwrite it
+    sha = None
+    req = urllib.request.Request(url, headers={"Authorization": f"token {token}", "Accept": "application/vnd.github+json"})
+    try:
+        with urllib.request.urlopen(req) as response:
+            res_data = json.loads(response.read().decode())
+            sha = res_data.get("sha")
+    except Exception:
+        pass
+
+    cf_url = get_cloudflare_url()
+    payload_data = {
+        "status": status,
+        "log": log_content
+    }
+    if cf_url:
+        payload_data["cloudflare_url"] = cf_url
+
+    content_bytes = json.dumps(payload_data).encode("utf-8")
+    content_b64 = base64.b64encode(content_bytes).decode("utf-8")
+
+    body = {
+        "message": f"Setup status: {status}",
+        "content": content_b64
+    }
+    if sha:
+        body["sha"] = sha
+
+    req_put = urllib.request.Request(
+        url,
+        data=json.dumps(body).encode("utf-8"),
+        headers={
+            "Authorization": f"token {token}",
+            "Accept": "application/vnd.github+json",
+            "Content-Type": "application/json"
+        },
+        method="PUT"
+    )
+    try:
+        with urllib.request.urlopen(req_put) as response:
+            print(f"Status updated successfully: {status}")
+    except Exception as e:
+        print(f"Failed to update status: {e}")
+
+if __name__ == "__main__":
+    main()
+EOF
+    chown ubuntu:ubuntu /home/ubuntu/update_status.py
+    chmod 755 /home/ubuntu/update_status.py
+
+    update_status() {
+      GITHUB_TOKEN="${github_token}" GITHUB_REPO="${github_repo}" python3 /home/ubuntu/update_status.py "$1" "$2" 2>>"$LOG" || true
+    }
 
     log "=== Step 1: Enable Docker ==="
     update_status INITIALIZING "Enabling Docker service..."
     systemctl enable docker
     systemctl start docker
     usermod -aG docker ubuntu
+
+    log "=== Step 1.5: Install and start Cloudflare Tunnel ==="
+    update_status INITIALIZING "Installing Cloudflare Tunnel..."
+    ARCH=$(dpkg --print-architecture)
+    log "Detected CPU architecture: $ARCH"
+    curl -L --output /usr/local/bin/cloudflared "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-$ARCH" 2>>"$LOG"
+    chmod +x /usr/local/bin/cloudflared
+
+    cat <<'EOF' > /etc/systemd/system/cloudflared.service
+[Unit]
+Description=Cloudflare Tunnel Quick Tunnel
+After=network.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/local/bin/cloudflared tunnel --url https://localhost:8443 --no-tls-verify --no-autoupdate
+Restart=always
+RestartSec=5
+StandardOutput=file:/var/log/cloudflared.log
+StandardError=file:/var/log/cloudflared.log
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    systemctl daemon-reload
+    systemctl enable cloudflared
+    systemctl start cloudflared
+    log "Cloudflare Tunnel service started."
 
     log "=== Step 2: Clone repositories ==="
     update_status CLONING "Cloning CISO Assistant and installation repo..."
@@ -173,4 +225,3 @@ runcmd:
 
 log:
   output: '/var/log/cloud-init-ciso-setup.log'
-
