@@ -66,3 +66,11 @@ variable "github_repo" {
   description = "The owner/repository of the user's fork (e.g., username/ciso-installation)."
   default     = ""
 }
+
+variable "github_token" {
+  type        = string
+  description = "The GitHub PAT or short-lived token to update status."
+  default     = ""
+  sensitive   = true
+}
+

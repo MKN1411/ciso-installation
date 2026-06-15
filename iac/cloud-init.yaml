@@ -1,6 +1,6 @@
 #cloud-config
 # ==============================================================================
-# Cloud-Init Template: Automated Docker & CISO Assistant Provisioning
+# Cloud-Init Template: Automated Docker & CISO Assistant Provisioning (Private)
 # Target OS: Ubuntu 22.04 LTS / 24.04 LTS (Oracle Cloud VM)
 # ==============================================================================
 
@@ -18,42 +18,123 @@ packages:
   - docker-compose-v2
   - git
   - curl
+  - python3
+
+write_files:
+  - path: /home/ubuntu/update_status.py
+    owner: ubuntu:ubuntu
+    permissions: '0755'
+    content: |
+      import sys
+      import os
+      import json
+      import base64
+      import urllib.request
+
+      def main():
+          if len(sys.argv) < 3:
+              print("Usage: update_status.py <status> <message_or_log_file>")
+              sys.exit(1)
+          status = sys.argv[1]
+          log_source = sys.argv[2]
+          
+          if os.path.exists(log_source):
+              with open(log_source, "r", encoding="utf-8", errors="ignore") as f:
+                  log_content = f.read()
+          else:
+              log_content = log_source
+
+          token = "${github_token}"
+          repo = "${github_repo}"
+          if not token or not repo:
+              print("Missing token or repo configuration")
+              sys.exit(1)
+
+          url = f"https://api.github.com/repos/{repo}/contents/setup_status.json"
+          
+          # Get SHA if file exists
+          sha = None
+          req = urllib.request.Request(url, headers={"Authorization": f"token {token}", "Accept": "application/vnd.github+json"})
+          try:
+              with urllib.request.urlopen(req) as response:
+                  res_data = json.loads(response.read().decode())
+                  sha = res_data.get("sha")
+          except Exception:
+              pass
+
+          payload_data = {
+              "status": status,
+              "log": log_content
+          }
+          content_bytes = json.dumps(payload_data).encode("utf-8")
+          content_b64 = base64.b64encode(content_bytes).decode("utf-8")
+
+          body = {
+              "message": f"Setup status: {status}",
+              "content": content_b64
+          }
+          if sha:
+              body["sha"] = sha
+
+          req_put = urllib.request.Request(
+              url,
+              data=json.dumps(body).encode("utf-8"),
+              headers={
+                  "Authorization": f"token {token}",
+                  "Accept": "application/vnd.github+json",
+                  "Content-Type": "application/json"
+              },
+              method="PUT"
+          )
+          try:
+              with urllib.request.urlopen(req_put) as response:
+                  print(f"Status updated successfully: {status}")
+          except Exception as e:
+              print(f"Failed to update status: {e}")
+
+      if __name__ == "__main__":
+          main()
 
 runcmd:
-  # 1. Enable and start Docker service
+  # 1. Initialize status
+  - python3 /home/ubuntu/update_status.py INITIALIZING "System packages installed. Starting configuration..."
+  
+  # 2. Enable and start Docker service
   - systemctl enable docker
   - systemctl start docker
   
-  # 2. Add default ubuntu user to docker group
+  # 3. Add default ubuntu user to docker group
   - usermod -aG docker ubuntu
   
-  # 3. Clone CISO Assistant Community Edition
+  # 4. Clone CISO Assistant Community Edition
   - git clone https://github.com/intuitem/ciso-assistant-community.git /home/ubuntu/ciso-assistant
   
-  # 4. Clone User's Fork Repository (passed via Terraform templatefile)
+  # 5. Clone User's Fork Repository
   - git clone https://github.com/${github_repo}.git /home/ubuntu/ciso-installation
+  - python3 /home/ubuntu/update_status.py CLONING "Repository cloned. Copying setup files..."
   
-  # 5. Copy GRC Setup files into CISO Assistant db/ folder
+  # 6. Copy GRC Setup files into CISO Assistant db/ folder
   - mkdir -p /home/ubuntu/ciso-assistant/db
   - cp /home/ubuntu/ciso-installation/*.py /home/ubuntu/ciso-assistant/db/
   - cp /home/ubuntu/ciso-installation/*.json /home/ubuntu/ciso-assistant/db/
   - cp -r /home/ubuntu/ciso-installation/evidences /home/ubuntu/ciso-assistant/db/
   
-  # 6. Fix file permissions
+  # 7. Fix file permissions
   - chown -R ubuntu:ubuntu /home/ubuntu/ciso-assistant
   - chown -R ubuntu:ubuntu /home/ubuntu/ciso-installation
   
-  # 7. Start Docker Compose services
+  # 8. Start Docker Compose services
+  - python3 /home/ubuntu/update_status.py DOCKER_PULL "Docker images pulling and services starting..."
   - cd /home/ubuntu/ciso-assistant
   - docker compose pull
   - docker compose up -d
   
-  # 8. Wait for API and run GRC seeder scripts inside container
+  # 9. Wait for API and run GRC seeder scripts inside container
   - |
-    echo "Waiting for CISO Assistant API to boot up..."
+    python3 /home/ubuntu/update_status.py WAITING_FOR_API "Waiting for CISO Assistant API to boot up..."
     for i in {1..30}; do
       if curl -k -s http://localhost:8000/api/health/ | grep -q "ok" || curl -k -s https://localhost:8443/api/health/ | grep -q "ok"; then
-        echo "API is healthy! Seeding GRC database..."
+        python3 /home/ubuntu/update_status.py SEEDING /var/log/cloud-init-ciso-setup.log
         sleep 5
         docker compose exec -T backend python db/grc_setup.py || echo "grc_setup failed"
         docker compose exec -T backend python db/import_m365_assess.py || echo "import_m365_assess failed"
@@ -63,11 +144,16 @@ runcmd:
         docker compose exec -T backend python db/import_m365_findings.py || echo "import_m365_findings failed"
         docker compose exec -T backend python db/grc_profile_setup.py --profile sme || echo "grc_profile_setup failed"
         docker compose exec -T backend python db/populate_privacy_custom.py || echo "populate_privacy_custom failed"
-        break
+        
+        # Update final success status
+        python3 /home/ubuntu/update_status.py COMPLETED /var/log/cloud-init-ciso-setup.log
+        exit 0
       fi
-      echo "Waiting... (attempt $i/30)"
       sleep 10
     done
+    python3 /home/ubuntu/update_status.py FAILED /var/log/cloud-init-ciso-setup.log
+    exit 1
 
 log:
   output: '/var/log/cloud-init-ciso-setup.log'
+

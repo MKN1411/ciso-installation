@@ -31,10 +31,6 @@ jobs:
           echo "${{ secrets.OCI_PRIVATE_KEY }}" > oci_private_key.pem
           chmod 600 oci_private_key.pem
           
-          # Write the SSH private key to a file for log streaming
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ssh_private_key.pem
-          chmod 600 ssh_private_key.pem
-          
           # Create the .env configuration file
           cat <<EOF > .env
           OCI_USER_OCID=${{ secrets.OCI_USER_OCID }}
@@ -44,8 +40,8 @@ jobs:
           OCI_COMPARTMENT_OCID=${{ secrets.OCI_COMPARTMENT_OCID }}
           OCI_REGION=${{ github.event.inputs.oci_region }}
           SSH_PUBLIC_KEY=${{ secrets.SSH_PUBLIC_KEY }}
-          SSH_PRIVATE_KEY_FILE=ssh_private_key.pem
           GITHUB_REPO=${{ github.repository }}
+          GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
           EOF
 
       - name: Execute OCI Stack Deployment

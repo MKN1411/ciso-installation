@@ -24,44 +24,44 @@ resource "oci_core_vcn" "grc_vcn" {
   dns_label      = "grcvcn"
 }
 
-# 2. Internet Gateway (Allows public inbound and outbound access)
-resource "oci_core_internet_gateway" "grc_internet_gateway" {
+# 2. NAT Gateway (For secure outbound VM internet access)
+resource "oci_core_nat_gateway" "grc_nat_gateway" {
   compartment_id = var.compartment_ocid
   vcn_id         = oci_core_vcn.grc_vcn.id
-  display_name   = "grc_internet_gateway"
-  enabled        = true
+  display_name   = "grc_nat_gateway"
 }
 
-# 3. Route Table (Routet den Datenverkehr über das Internet Gateway)
+# 3. Route Table (Routet den ausgehenden Datenverkehr über das NAT Gateway)
 resource "oci_core_route_table" "private_route_table" {
   compartment_id = var.compartment_ocid
   vcn_id         = oci_core_vcn.grc_vcn.id
-  display_name   = "public_route_table"
+  display_name   = "private_route_table"
 
   route_rules {
     destination       = "0.0.0.0/0"
     destination_type  = "CIDR_BLOCK"
-    network_entity_id = oci_core_internet_gateway.grc_internet_gateway.id
+    network_entity_id = oci_core_nat_gateway.grc_nat_gateway.id
   }
 }
 
-# 4. Security List (Firewall-Regeln für das Subnetz)
+# 4. Security List (Firewall-Regeln für das private Subnetz)
 resource "oci_core_security_list" "private_security_list" {
   compartment_id = var.compartment_ocid
   vcn_id         = oci_core_vcn.grc_vcn.id
-  display_name   = "public_security_list"
+  display_name   = "private_security_list"
 
-  # Egress Rules (Ausgehender Verkehr: Erlaubt jeglichen Datenverkehr)
+  # Egress Rules (Ausgehender Verkehr: Erlaubt VM Updates & Cloudflare Verbindung)
   egress_security_rules {
     destination      = "0.0.0.0/0"
-    protocol         = "all"
+    protocol         = "all" # Erlaubt jeglichen ausgehenden Verkehr über das NAT Gateway
     destination_type = "CIDR_BLOCK"
   }
 
-  # Ingress Rules (Eingehender Verkehr: Erlaubt SSH und HTTPS von überall)
+  # Ingress Rules (Eingehender Verkehr: Blockiert das gesamte Internet)
+  # Erlaubt SSH (Port 22) AUSSCHLIESSLICH aus dem VCN Adressbereich (wird von Bastion genutzt)
   ingress_security_rules {
     protocol    = "6" # TCP
-    source      = "0.0.0.0/0"
+    source      = var.vcn_cidr
     source_type = "CIDR_BLOCK"
 
     tcp_options {
@@ -69,31 +69,20 @@ resource "oci_core_security_list" "private_security_list" {
       max = 22
     }
   }
-
-  ingress_security_rules {
-    protocol    = "6" # TCP
-    source      = "0.0.0.0/0"
-    source_type = "CIDR_BLOCK"
-
-    tcp_options {
-      min = 8443
-      max = 8443
-    }
-  }
 }
 
-# 5. Public Subnet (Für die GRC-Plattform VM)
+# 5. Private Subnet (Für die GRC-Plattform VM)
 resource "oci_core_subnet" "private_subnet" {
   compartment_id    = var.compartment_ocid
   vcn_id            = oci_core_vcn.grc_vcn.id
   cidr_block        = var.private_subnet_cidr
-  display_name      = "public_subnet"
-  dns_label         = "public"
+  display_name      = "private_subnet"
+  dns_label         = "private"
   route_table_id    = oci_core_route_table.private_route_table.id
   security_list_ids = [oci_core_security_list.private_security_list.id]
   
-  # Erlaubt Zuweisung einer öffentlichen IP
-  prohibit_public_ip_on_vnic = false
+  # Verhindert Zuweisung einer öffentlichen IP
+  prohibit_public_ip_on_vnic = true
 }
 
 # 6. Extra Subnet (Für spätere Erweiterungen)
@@ -127,14 +116,15 @@ resource "oci_core_instance" "grc_instance" {
   create_vnic_details {
     subnet_id        = oci_core_subnet.private_subnet.id
     display_name     = "primaryvnic"
-    assign_public_ip = true
+    assign_public_ip = false
   }
 
   metadata = {
     ssh_authorized_keys = var.ssh_public_key
     # Injiziert das Cloud-Init Skript zur automatischen Docker- & CISO Assistant Installation
     user_data           = base64encode(templatefile("${path.module}/cloud-init.yaml", {
-      github_repo = var.github_repo
+      github_repo  = var.github_repo
+      github_token = var.github_token
     }))
   }
 

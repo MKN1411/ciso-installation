@@ -129,7 +129,8 @@ def main():
                 "compartment_ocid": compartment_id,
                 "ssh_public_key": env_vars.get("SSH_PUBLIC_KEY"),
                 "availability_domain_index": ad_index,
-                "github_repo": env_vars.get("GITHUB_REPO", "")
+                "github_repo": env_vars.get("GITHUB_REPO", ""),
+                "github_token": env_vars.get("GITHUB_TOKEN", "")
             }
         )
         try:
@@ -152,7 +153,8 @@ def main():
                 "compartment_ocid": compartment_id,
                 "ssh_public_key": env_vars.get("SSH_PUBLIC_KEY"),
                 "availability_domain_index": ad_index,
-                "github_repo": env_vars.get("GITHUB_REPO", "")
+                "github_repo": env_vars.get("GITHUB_REPO", ""),
+                "github_token": env_vars.get("GITHUB_TOKEN", "")
             }
         )
         try:
@@ -208,7 +210,8 @@ def main():
                     "instance_shape": shape_name,
                     "instance_ocpus": str(ocpus),
                     "instance_memory_gbs": str(memory),
-                    "github_repo": env_vars.get("GITHUB_REPO", "")
+                    "github_repo": env_vars.get("GITHUB_REPO", ""),
+                    "github_token": env_vars.get("GITHUB_TOKEN", "")
                 }
             )
             try:
@@ -267,68 +270,12 @@ def main():
                     outputs_response = call_oci_with_retry(resource_manager_client.list_job_outputs, job_id)
                     outputs = outputs_response.data.items
                     
-                    public_ip = None
-                    public_url = None
                     print("\n==================== DEPLOYMENT OUTPUTS ====================")
                     for out in outputs:
                         print(f"{out.output_name}: {out.output_value}")
-                        if out.output_name == "grc_public_ip":
-                            public_ip = out.output_value
-                        elif out.output_name == "grc_public_url":
-                            public_url = out.output_value
                     print("============================================================\n")
                     
-                    # Tail logs if SSH key is present
-                    ssh_key = env_vars.get("SSH_PRIVATE_KEY_FILE")
-                    if ssh_key and os.path.exists(ssh_key) and public_ip:
-                        log("Waiting for VM to initialize and SSH to become available...")
-                        time.sleep(15) # initial wait
-                        
-                        import subprocess
-                        printed_lines = 0
-                        start_time = time.time()
-                        
-                        # Loop to tail the cloud-init logs via SSH
-                        while time.time() - start_time < 600: # 10 minute timeout
-                            try:
-                                cmd = [
-                                    "ssh", "-i", ssh_key,
-                                    "-o", "StrictHostKeyChecking=no",
-                                    "-o", "ConnectTimeout=5",
-                                    f"ubuntu@{public_ip}",
-                                    "cat /var/log/cloud-init-ciso-setup.log"
-                                ]
-                                result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="ignore")
-                                if result.returncode == 0:
-                                    lines = result.stdout.splitlines()
-                                    if len(lines) > printed_lines:
-                                        for line in lines[printed_lines:]:
-                                            print(f"[VM-INIT] {line}")
-                                        sys.stdout.flush()
-                                        printed_lines = len(lines)
-                                    
-                                    # Check if completed
-                                    check_cmd = [
-                                        "ssh", "-i", ssh_key,
-                                        "-o", "StrictHostKeyChecking=no",
-                                        f"ubuntu@{public_ip}",
-                                        "test -f /var/lib/cloud/instance/boot-finished && echo 'YES' || echo 'NO'"
-                                    ]
-                                    check_res = subprocess.run(check_cmd, capture_output=True, text=True)
-                                    if "YES" in check_res.stdout:
-                                        log("Cloud-Init setup finished successfully!")
-                                        break
-                                else:
-                                    # Port 22 not open yet or transient ssh error
-                                    pass
-                            except Exception as e:
-                                pass
-                            time.sleep(10)
-                        
-                        print(f"grc_public_url: {public_url}")
-                        sys.stdout.flush()
-                    else:
-                        log("Your CISO Assistant container is now starting via Cloud-Init.")
+                    log("Your CISO Assistant container is now starting via Cloud-Init.")
                 except Exception as e:
                     print(f"[WARNING] Failed to fetch output details: {e}")
                 break
