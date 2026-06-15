@@ -2,6 +2,7 @@
 # ==============================================================================
 # Cloud-Init Template: Automated Docker, Cloudflare & CISO Assistant Provisioning
 # Target OS: Ubuntu 22.04 LTS / 24.04 LTS (Oracle Cloud VM)
+# NOTE: @NOTIFICATION_EMAIL@, @GITHUB_REPO@, @GITHUB_TOKEN@ are replaced by Terraform replace()
 # ==============================================================================
 
 # Configure 2GB Swap Space to support 1GB RAM on AMD micro shapes
@@ -27,7 +28,7 @@ runcmd:
     CISO_DIR="/home/ubuntu/ciso-assistant"
     INSTALL_DIR="/home/ubuntu/ciso-installation"
     LOG="/var/log/cloud-init-ciso-setup.log"
-    NOTIFICATION_EMAIL="${notification_email}"
+    NOTIFICATION_EMAIL="@NOTIFICATION_EMAIL@"
 
     log() { echo "[$(date '+%H:%M:%S')] $*" | tee -a "$LOG"; }
 
@@ -77,7 +78,6 @@ def main():
 
     url = f'https://api.github.com/repos/{repo}/contents/setup_status.json'
 
-    # Get SHA if file exists to overwrite it
     sha = None
     req = urllib.request.Request(url, headers={'Authorization': f'token {token}', 'Accept': 'application/vnd.github+json'})
     try:
@@ -125,7 +125,7 @@ PYEOF
     chmod 755 /home/ubuntu/update_status.py
 
     update_status() {
-      GITHUB_TOKEN="${github_token}" GITHUB_REPO="${github_repo}" python3 /home/ubuntu/update_status.py "$1" "$2" 2>>"$LOG" || true
+      GITHUB_TOKEN="@GITHUB_TOKEN@" GITHUB_REPO="@GITHUB_REPO@" python3 /home/ubuntu/update_status.py "$1" "$2" 2>>"$LOG" || true
     }
 
     log "=== Step 1: Enable Docker ==="
@@ -137,7 +137,7 @@ PYEOF
     log "=== Step 2: Clone repositories ==="
     update_status CLONING "Cloning CISO Assistant and installation repo..."
     git clone https://github.com/intuitem/ciso-assistant-community.git "$CISO_DIR" 2>>"$LOG"
-    git clone https://github.com/${github_repo}.git "$INSTALL_DIR" 2>>"$LOG"
+    git clone https://github.com/@GITHUB_REPO@.git "$INSTALL_DIR" 2>>"$LOG"
 
     log "=== Step 3: Copy GRC setup files ==="
     mkdir -p "$CISO_DIR/db"
@@ -194,7 +194,6 @@ PYEOF
     curl -L --output /usr/local/bin/cloudflared "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-$ARCH" 2>>"$LOG"
     chmod +x /usr/local/bin/cloudflared
 
-    # Write cloudflared service with logfile support
     cat > /etc/systemd/system/cloudflared.service << 'SERVICEEOF'
 [Unit]
 Description=Cloudflare Tunnel Quick Tunnel
@@ -216,7 +215,6 @@ SERVICEEOF
     systemctl daemon-reload
     systemctl enable cloudflared
     systemctl start cloudflared
-    # cloudflared.log wird von systemd erstellt (root:root) – ubuntu lesbar machen
     touch /var/log/cloudflared.log
     chown root:ubuntu /var/log/cloudflared.log
     chmod 640 /var/log/cloudflared.log
@@ -225,12 +223,10 @@ SERVICEEOF
     log "=== Step 8: Deploy URL-Sync scripts ==="
     update_status URL_SYNC "Deploying URL sync scripts..."
     
-    # Create log directory (root:ubuntu damit Admin lesen kann)
     mkdir -p /var/log/ciso-onboarding
     chown root:ubuntu /var/log/ciso-onboarding
     chmod 755 /var/log/ciso-onboarding
 
-    # Helper: get-cloudflare-tunnel-url.sh
     cat > /usr/local/bin/get-cloudflare-tunnel-url.sh << 'SHSCRIPT'
 #!/bin/bash
 set -euo pipefail
@@ -248,7 +244,6 @@ exit 1
 SHSCRIPT
     chmod 755 /usr/local/bin/get-cloudflare-tunnel-url.sh
 
-    # Helper: test-ciso-health.sh
     cat > /usr/local/bin/test-ciso-health.sh << 'SHSCRIPT2'
 #!/bin/bash
 set -euo pipefail
@@ -273,7 +268,6 @@ log "All health checks passed."
 SHSCRIPT2
     chmod 755 /usr/local/bin/test-ciso-health.sh
 
-    # Helper: backup-ciso-config.sh
     cat > /usr/local/bin/backup-ciso-config.sh << 'SHSCRIPT3'
 #!/bin/bash
 set -euo pipefail
@@ -288,7 +282,6 @@ echo "$BACKUP_DIR"
 SHSCRIPT3
     chmod 755 /usr/local/bin/backup-ciso-config.sh
 
-    # Helper: patch-ciso-compose.py
     cat > /usr/local/bin/patch-ciso-compose.py << 'PYEOF2'
 #!/usr/bin/env python3
 import sys, os, re, json, shutil, subprocess
@@ -309,45 +302,16 @@ def patch(compose_path, public_url, public_host):
     os.makedirs(os.path.dirname(backup), exist_ok=True)
     shutil.copy2(compose_path, backup)
 
-    # Backend
-    content = re.sub(
-        r'(- ALLOWED_HOSTS=).*',
-        rf'\g<1>backend,localhost,{public_host}',
-        content
-    )
-    content = re.sub(
-        r'(- CISO_ASSISTANT_URL=).*',
-        rf'\g<1>{public_url}',
-        content
-    )
-    content = re.sub(
-        r'(- CSRF_TRUSTED_ORIGINS=).*',
-        r'\g<1>https://trycloudflare.com,https://*.trycloudflare.com',
-        content
-    )
-    # Huey (ALLOWED_HOSTS + CISO_ASSISTANT_URL only)
-    # These are already handled by the same patterns above since they use same env var names
-
-    # Frontend
-    content = re.sub(
-        r'(- PUBLIC_BACKEND_API_EXPOSED_URL=).*',
-        rf'\g<1>{public_url}/api',
-        content
-    )
-    content = re.sub(
-        r'(- ORIGIN=).*',
-        rf'\g<1>{public_url}',
-        content
-    )
-
-    # Caddy command block - replace the entire Caddyfile content
-    caddy_pattern = r'(localhost:443, )[a-z0-9-]+\.trycloudflare\.com(:443 \{)'
-    content = re.sub(caddy_pattern, rf'\g<1>{public_host}\g<2>', content)
+    content = re.sub(r'(- ALLOWED_HOSTS=).*', rf'\g<1>backend,localhost,{public_host}', content)
+    content = re.sub(r'(- CISO_ASSISTANT_URL=).*', rf'\g<1>{public_url}', content)
+    content = re.sub(r'(- CSRF_TRUSTED_ORIGINS=).*', r'\g<1>https://trycloudflare.com,https://*.trycloudflare.com', content)
+    content = re.sub(r'(- PUBLIC_BACKEND_API_EXPOSED_URL=).*', rf'\g<1>{public_url}/api', content)
+    content = re.sub(r'(- ORIGIN=).*', rf'\g<1>{public_url}', content)
+    content = re.sub(r'(localhost:443, )[a-z0-9-]+\.trycloudflare\.com(:443 \{)', rf'\g<1>{public_host}\g<2>', content)
 
     with open(compose_path, "w") as f:
         f.write(content)
 
-    # Validate
     try:
         r = subprocess.run(["docker", "compose", "config", "--quiet"],
             cwd=os.path.dirname(compose_path), capture_output=True, timeout=30)
@@ -433,7 +397,6 @@ TIMEREOF
     log "=== Setup COMPLETED successfully ==="
     update_status COMPLETED "$LOG"
 
-    # Send initial mail if email configured and URL available
     if [ -n "$NOTIFICATION_EMAIL" ]; then
         CF_URL=$(grep -oP 'https://[a-z0-9-]+\.trycloudflare\.com' /var/log/cloudflared.log | tail -1)
         if [ -n "$CF_URL" ] && command -v curl &>/dev/null; then
