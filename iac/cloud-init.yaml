@@ -108,12 +108,16 @@ write_files:
 
       ARCH=$(dpkg --print-architecture)
       if [ "$ARCH" = "arm64" ]; then
-          wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64.deb -O /tmp/cloudflared.deb
+          curl -L -s -o /tmp/cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64.deb
       else
-          wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb -O /tmp/cloudflared.deb
+          curl -L -s -o /tmp/cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
       fi
       dpkg -i /tmp/cloudflared.deb || apt-get install -f -y
       rm -f /tmp/cloudflared.deb
+
+      # Erstelle leeres Logfile und setze Berechtigungen, damit systemd/cloudflared hineinschreiben koennen
+      touch /var/log/cloudflared.log
+      chmod 644 /var/log/cloudflared.log
 
       cat > /etc/systemd/system/cloudflared-quick.service << 'EOF'
       [Unit]
@@ -126,8 +130,8 @@ write_files:
       ExecStart=/usr/local/bin/cloudflared tunnel --url https://localhost:8443 --no-tls-verify --no-autoupdate
       Restart=always
       RestartSec=5
-      StandardOutput=append:/var/log/cloudflared-quick.log
-      StandardError=append:/var/log/cloudflared-quick.log
+      StandardOutput=append:/var/log/cloudflared.log
+      StandardError=append:/var/log/cloudflared.log
 
       [Install]
       WantedBy=multi-user.target
@@ -198,7 +202,7 @@ write_files:
     content: |
       #!/bin/bash
       set -euo pipefail
-      LOGFILE="${1:-/var/log/cloudflared-quick.log}"
+      LOGFILE="${1:-/var/log/cloudflared.log}"
       TIMEOUT="${2:-30}"
       if [ ! -f "$LOGFILE" ]; then echo "ERROR: Logfile not found: $LOGFILE" >&2; exit 1; fi
       END=$((SECONDS + TIMEOUT))
