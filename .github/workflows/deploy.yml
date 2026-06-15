@@ -48,7 +48,7 @@ jobs:
           OCI_REGION=${{ github.event.inputs.oci_region }}
           SSH_PUBLIC_KEY=${{ secrets.SSH_PUBLIC_KEY }}
           GITHUB_REPO=${{ github.repository }}
-          GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN=${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
           NOTIFICATION_EMAIL=${{ github.event.inputs.notification_email }}
           EOF
 
