@@ -118,7 +118,7 @@ def patch_compose(compose_content: str, public_url: str, public_host: str) -> st
             block_lines = [l for l in block_lines if not l.lstrip().startswith("- ORIGIN=")]
             indent = " " * (block_indent + 6)
             block_lines.append(f'{indent}- PUBLIC_BACKEND_API_EXPOSED_URL={public_url}/api')
-            block_lines.append(f'{indent}- ORIGIN={public_url}')
+            block_lines.append(f'{indent}- ORIGIN={public_url}/')
             services_changed.append("frontend")
             in_block = None
         elif in_block == "caddy_cmd":
@@ -254,6 +254,8 @@ def main():
     # Read and patch
     original = read_file(compose_path)
     patched = patch_compose(original, public_url, public_host)
+    # Ensure Caddy port mapping is updated from "8443:8443" to "8443:443"
+    patched = re.sub(r'-\s*"8443:8443"', '- "8443:443"', patched)
 
     # Backup
     backup_path = backup_file(compose_path)
@@ -266,7 +268,22 @@ def main():
     # Validate
     if validate_compose(compose_path):
         print("Validation: docker compose config SUCCEEDED")
-        status = "success"
+        print("Applying changes via docker compose up -d...")
+        try:
+            subprocess.run(["docker", "compose", "up", "-d"], cwd=os.path.dirname(compose_path), check=True)
+            print("Docker containers successfully updated.")
+            status = "success"
+            
+            # Trigger email notification if script exists
+            mail_script = "/usr/local/bin/send-tunnel-url-mail.sh"
+            if os.path.exists(mail_script):
+                print("Triggering email notification...")
+                subprocess.run([mail_script, public_url], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception as e:
+            print(f"ERROR: Failed to run docker compose up -d: {e}")
+            shutil.copy2(backup_path, compose_path)
+            subprocess.run(["docker", "compose", "up", "-d"], cwd=os.path.dirname(compose_path))
+            status = "failed"
     else:
         print("ERROR: docker compose config FAILED – restoring backup")
         shutil.copy2(backup_path, compose_path)
