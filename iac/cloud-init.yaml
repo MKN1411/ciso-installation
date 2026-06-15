@@ -2,7 +2,6 @@
 # ==============================================================================
 # Cloud-Init Template: Automated Docker, Cloudflare & CISO Assistant Provisioning
 # NOTE: @NOTIFICATION_EMAIL@, @GITHUB_REPO@, @GITHUB_TOKEN@ replaced by Terraform
-# Systemd units created via runcmd heredocs (write_files: silently skips them)
 # ==============================================================================
 
 swap:
@@ -19,6 +18,7 @@ packages:
   - git
   - curl
   - python3
+  - wget
 
 write_files:
 
@@ -96,6 +96,48 @@ write_files:
       if __name__ == '__main__':
           main()
 
+  - path: /usr/local/bin/install_ciso_tunnel.sh
+    permissions: '0755'
+    owner: 'root:root'
+    content: |
+      #!/bin/bash
+      # Automatische Einrichtung des Cloudflare Quick Tunnels fuer CISO Assistant
+      set -e
+
+      echo '==> Starte Cloudflare Quick Tunnel Installation...'
+
+      ARCH=$(dpkg --print-architecture)
+      if [ "$ARCH" = "arm64" ]; then
+          wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64.deb -O /tmp/cloudflared.deb
+      else
+          wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb -O /tmp/cloudflared.deb
+      fi
+      dpkg -i /tmp/cloudflared.deb || apt-get install -f -y
+      rm -f /tmp/cloudflared.deb
+
+      cat > /etc/systemd/system/cloudflared-quick.service << 'EOF'
+      [Unit]
+      Description=Cloudflare Quick Tunnel for CISO Assistant
+      After=network.target
+
+      [Service]
+      Type=simple
+      User=root
+      ExecStart=/usr/local/bin/cloudflared tunnel --url https://localhost:8443 --no-tls-verify --no-autoupdate
+      Restart=always
+      RestartSec=5
+      StandardOutput=append:/var/log/cloudflared-quick.log
+      StandardError=append:/var/log/cloudflared-quick.log
+
+      [Install]
+      WantedBy=multi-user.target
+      EOF
+
+      systemctl daemon-reload
+      systemctl enable cloudflared-quick.service
+      systemctl start cloudflared-quick.service
+      echo '==> Cloudflare Tunnel installiert und gestartet.'
+
   - path: /usr/local/bin/patch-ciso-compose.py
     permissions: '0755'
     owner: 'root:root'
@@ -156,7 +198,7 @@ write_files:
     content: |
       #!/bin/bash
       set -euo pipefail
-      LOGFILE="${1:-/var/log/cloudflared.log}"
+      LOGFILE="${1:-/var/log/cloudflared-quick.log}"
       TIMEOUT="${2:-30}"
       if [ ! -f "$LOGFILE" ]; then echo "ERROR: Logfile not found: $LOGFILE" >&2; exit 1; fi
       END=$((SECONDS + TIMEOUT))
@@ -167,31 +209,6 @@ write_files:
       done
       echo "ERROR: No trycloudflare.com URL found after ${TIMEOUT}s" >&2
       exit 1
-
-  - path: /usr/local/bin/test-ciso-health.sh
-    permissions: '0755'
-    owner: 'root:root'
-    content: |
-      #!/bin/bash
-      set -euo pipefail
-      LOCAL_URL="${1:-https://localhost:8443}"
-      PUBLIC_URL="${2:-}"
-      TIMEOUT="${3:-10}"
-      log() { echo "[$(date '+%H:%M:%S')] $*"; }
-      fail() { log "FAILED: $*"; exit 1; }
-      log "Checking local health: $LOCAL_URL/api/health/"
-      LOCAL_RESULT=$(curl -k -s --max-time "$TIMEOUT" "$LOCAL_URL/api/health/" 2>&1) || true
-      echo "$LOCAL_RESULT" | grep -q '"status":"ok"' && log "  [+] Local health: OK" || fail "Local health: $LOCAL_RESULT"
-      LOCAL_WEB=$(curl -k -s -o /dev/null -w "%{http_code}" --max-time "$TIMEOUT" "$LOCAL_URL" 2>&1) || true
-      [ "$LOCAL_WEB" = "302" ] || [ "$LOCAL_WEB" = "200" ] && log "  [+] Local web: HTTP $LOCAL_WEB" || fail "Local web: HTTP $LOCAL_WEB"
-      if [ -n "$PUBLIC_URL" ]; then
-        log "Checking public health: $PUBLIC_URL/api/health/"
-        PUBLIC_RESULT=$(curl -s --max-time "$TIMEOUT" "$PUBLIC_URL/api/health/" 2>&1) || true
-        echo "$PUBLIC_RESULT" | grep -q '"status":"ok"' && log "  [+] Public health: OK" || fail "Public health: $PUBLIC_RESULT"
-        PUBLIC_WEB=$(curl -s -o /dev/null -w "%{http_code}" --max-time "$TIMEOUT" "$PUBLIC_URL" 2>&1) || true
-        [ "$PUBLIC_WEB" = "302" ] || [ "$PUBLIC_WEB" = "200" ] && log "  [+] Public web: HTTP $PUBLIC_WEB" || fail "Public web: HTTP $PUBLIC_WEB"
-      fi
-      log "All health checks passed."
 
   - path: /usr/local/bin/backup-ciso-config.sh
     permissions: '0755'
@@ -282,35 +299,8 @@ runcmd:
 
     log "=== Step 7: Install Cloudflare Tunnel ==="
     update_status CLOUDFLARE "Installing Cloudflare Tunnel..."
-    ARCH=$(dpkg --print-architecture)
-    curl -L --output /usr/local/bin/cloudflared "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-$ARCH" 2>>"$LOG"
-    chmod +x /usr/local/bin/cloudflared
-
-    cat > /etc/systemd/system/cloudflared.service << 'SERVICEEOF'
-    [Unit]
-    Description=Cloudflare Tunnel Quick Tunnel
-    After=network.target
-
-    [Service]
-    Type=simple
-    User=root
-    ExecStart=/usr/local/bin/cloudflared tunnel --url https://localhost:8443 --no-tls-verify --no-autoupdate --logfile /var/log/cloudflared.log
-    Restart=always
-    RestartSec=5
-    StandardOutput=file:/var/log/cloudflared.log
-    StandardError=file:/var/log/cloudflared.log
-
-    [Install]
-    WantedBy=multi-user.target
-    SERVICEEOF
-
-    systemctl daemon-reload
-    systemctl enable cloudflared
-    systemctl start cloudflared
-    touch /var/log/cloudflared.log
-    chown root:ubuntu /var/log/cloudflared.log
-    chmod 640 /var/log/cloudflared.log
-    log "Cloudflare Tunnel started."
+    bash /usr/local/bin/install_ciso_tunnel.sh 2>>"$LOG"
+    log "Cloudflare Tunnel installed."
 
     log "=== Step 8: Configure URL-Sync ==="
     update_status URL_SYNC "Deploying URL sync..."
