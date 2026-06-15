@@ -7,9 +7,16 @@ on:
         description: 'OCI Region'
         required: true
         default: 'eu-frankfurt-1'
+      notification_email:
+        description: 'Email for tunnel URL notifications'
+        required: false
+        default: ''
 
 permissions:
   contents: write
+
+env:
+  NOTIFICATION_EMAIL: ${{ github.event.inputs.notification_email }}
 
 jobs:
   deploy:
@@ -30,11 +37,8 @@ jobs:
 
       - name: Write OCI Credentials and Private Key
         run: |
-          # Write the private key to a file
           echo "${{ secrets.OCI_PRIVATE_KEY }}" > oci_private_key.pem
           chmod 600 oci_private_key.pem
-          
-          # Create the .env configuration file
           cat <<EOF > .env
           OCI_USER_OCID=${{ secrets.OCI_USER_OCID }}
           OCI_FINGERPRINT=${{ secrets.OCI_FINGERPRINT }}
@@ -45,6 +49,7 @@ jobs:
           SSH_PUBLIC_KEY=${{ secrets.SSH_PUBLIC_KEY }}
           GITHUB_REPO=${{ github.repository }}
           GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
+          NOTIFICATION_EMAIL=${{ github.event.inputs.notification_email }}
           EOF
 
       - name: Execute OCI Stack Deployment
