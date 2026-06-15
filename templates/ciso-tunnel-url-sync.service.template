@@ -1,0 +1,14 @@
+[Unit]
+Description=CISO Assistant Cloudflare Tunnel URL Sync
+After=docker.service cloudflared.service
+Requires=docker.service cloudflared.service
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/usr/local/bin/ciso-tunnel-url-sync.sh
+StandardOutput=file:/var/log/ciso-onboarding/cloudflare-url-sync.log
+StandardError=file:/var/log/ciso-onboarding/cloudflare-url-sync.log
+
+[Install]
+WantedBy=multi-user.target

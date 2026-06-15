@@ -27,11 +27,100 @@ runcmd:
     CISO_DIR="/home/ubuntu/ciso-assistant"
     INSTALL_DIR="/home/ubuntu/ciso-installation"
     LOG="/var/log/cloud-init-ciso-setup.log"
+    NOTIFICATION_EMAIL="${notification_email}"
 
     log() { echo "[$(date '+%H:%M:%S')] $*" | tee -a "$LOG"; }
 
     log "=== Step 0: Write status helper script ==="
-    echo "aW1wb3J0IHN5cwppbXBvcnQgb3MKaW1wb3J0IGpzb24KaW1wb3J0IGJhc2U2NAppbXBvcnQgdXJsbGliLnJlcXVlc3QKaW1wb3J0IHJlCgpkZWYgZ2V0X2Nsb3VkZmxhcmVfdXJsKCk6CiAgICBsb2dfcGF0aCA9ICcvdmFyL2xvZy9jbG91ZGZsYXJlZC5sb2cnCiAgICBpZiBvcy5wYXRoLmV4aXN0cyhsb2dfcGF0aCk6CiAgICAgICAgdHJ5OgogICAgICAgICAgICB3aXRoIG9wZW4obG9nX3BhdGgsICdyJywgZW5jb2Rpbmc9J3V0Zi04JywgZXJyb3JzPSdpZ25vcmUnKSBhcyBmOgogICAgICAgICAgICAgICAgY29udGVudCA9IGYucmVhZCgpCiAgICAgICAgICAgICAgICBtYXRjaCA9IHJlLnNlYXJjaChyJ2h0dHBzOi8vW2EtekEtWjAtOS1dK1wudHJ5Y2xvdWRmbGFyZVwuY29tJywgY29udGVudCkKICAgICAgICAgICAgICAgIGlmIG1hdGNoOgogICAgICAgICAgICAgICAgICAgIHJldHVybiBtYXRjaC5ncm91cCgwKQogICAgICAgIGV4Y2VwdCBFeGNlcHRpb246CiAgICAgICAgICAgIHBhc3MKICAgIHJldHVybiBOb25lCgpkZWYgbWFpbigpOgogICAgaWYgbGVuKHN5cy5hcmd2KSA8IDM6CiAgICAgICAgcHJpbnQoJ1VzYWdlOiB1cGRhdGVfc3RhdHVzLnB5IDxzdGF0dXM+IDxtZXNzYWdlX29yX2xvZ19maWxlPicpCiAgICAgICAgc3lzLmV4aXQoMSkKICAgIHN0YXR1cyA9IHN5cy5hcmd2WzFdCiAgICBsb2dfc291cmNlID0gc3lzLmFyZ3ZbMl0KICAgIAogICAgaWYgb3MucGF0aC5leGlzdHMobG9nX3NvdXJjZSk6CiAgICAgICAgdHJ5OgogICAgICAgICAgICB3aXRoIG9wZW4obG9nX3NvdXJjZSwgJ3InLCBlbmNvZGluZz0ndXRmLTgnLCBlcnJvcnM9J2lnbm9yZScpIGFzIGY6CiAgICAgICAgICAgICAgICBsb2dfY29udGVudCA9IGYucmVhZCgpCiAgICAgICAgZXhjZXB0IEV4Y2VwdGlvbiBhcyBlOgogICAgICAgICAgICBsb2dfY29udGVudCA9IGYnRXJyb3IgcmVhZGluZyBsb2cgZmlsZToge2V9JwogICAgZWxzZToKICAgICAgICBsb2dfY29udGVudCA9IGxvZ19zb3VyY2UKCiAgICB0b2tlbiA9IG9zLmVudmlyb24uZ2V0KCdHSVRIVUJfVE9LRU4nKQogICAgcmVwbyA9IG9zLmVudmlyb24uZ2V0KCdHSVRIVUJfUkVQTycpCiAgICBpZiBub3QgdG9rZW4gb3Igbm90IHJlcG86CiAgICAgICAgcHJpbnQoJ01pc3NpbmcgR0lUSFVCX1RPS0VOIG9yIEdJVEhVQl9SRVBPIGVudiB2YXInKQogICAgICAgIHN5cy5leGl0KDEpCgogICAgdXJsID0gZidodHRwczovL2FwaS5naXRodWIuY29tL3JlcG9zL3tyZXBvfS9jb250ZW50cy9zZXR1cF9zdGF0dXMuanNvbicKICAgIAogICAgIyBHZXQgU0hBIGlmIGZpbGUgZXhpc3RzIHRvIG92ZXJ3cml0ZSBpdAogICAgc2hhID0gTm9uZQogICAgcmVxID0gdXJsbGliLnJlcXVlc3QuUmVxdWVzdCh1cmwsIGhlYWRlcnM9eydBdXRob3JpemF0aW9uJzogZid0b2tlbiB7dG9rZW59JywgJ0FjY2VwdCc6ICdhcHBsaWNhdGlvbi92bmQuZ2l0aHViK2pzb24nfSkKICAgIHRyeToKICAgICAgICB3aXRoIHVybGxpYi5yZXF1ZXN0LnVybG9wZW4ocmVxKSBhcyByZXNwb25zZToKICAgICAgICAgICAgcmVzX2RhdGEgPSBqc29uLmxvYWRzKHJlc3BvbnNlLnJlYWQoKS5kZWNvZGUoKSkKICAgICAgICAgICAgc2hhID0gcmVzX2RhdGEuZ2V0KCdzaGEnKQogICAgZXhjZXB0IEV4Y2VwdGlvbjoKICAgICAgICBwYXNzCgogICAgY2ZfdXJsID0gZ2V0X2Nsb3VkZmxhcmVfdXJsKCkKICAgIHBheWxvYWRfZGF0YSA9IHsKICAgICAgICAnc3RhdHVzJzogc3RhdHVzLAogICAgICAgICdsb2cnOiBsb2dfY29udGVudAogICAgfQogICAgaWYgY2ZfdXJsOgogICAgICAgIHBheWxvYWRfZGF0YVsnY2xvdWRmbGFyZV91cmwnXSA9IGNmX3VybAoKICAgIGNvbnRlbnRfYnl0ZXMgPSBqc29uLmR1bXBzKHBheWxvYWRfZGF0YSkuZW5jb2RlKCd1dGYtOCcpCiAgICBjb250ZW50X2I2NCA9IGJhc2U2NC5iNjRlbmNvZGUoY29udGVudF9ieXRlcykuZGVjb2RlKCd1dGYtOCcpCgogICAgYm9keSA9IHsKICAgICAgICAnbWVzc2FnZSc6IGYnU2V0dXAgc3RhdHVzOiB7c3RhdHVzfScsCiAgICAgICAgJ2NvbnRlbnQnOiBjb250ZW50X2I2NAogICAgfQogICAgaWYgc2hhOgogICAgICAgIGJvZHlbJ3NoYSddID0gc2hhCgogICAgcmVxX3B1dCA9IHVybGxpYi5yZXF1ZXN0LlJlcXVlc3QoCiAgICAgICAgdXJsLAogICAgICAgIGRhdGE9anNvbi5kdW1wcyhib2R5KS5lbmNvZGUoJ3V0Zi04JyksCiAgICAgICAgaGVhZGVycz17CiAgICAgICAgICAgICdBdXRob3JpemF0aW9uJzogZid0b2tlbiB7dG9rZW59JywKICAgICAgICAgICAgJ0FjY2VwdCc6ICdhcHBsaWNhdGlvbi92bmQuZ2l0aHViK2pzb24nLAogICAgICAgICAgICAnQ29udGVudC1UeXBlJzogJ2FwcGxpY2F0aW9uL2pzb24nCiAgICAgICAgfSwKICAgICAgICBtZXRob2Q9J1BVVCcKICAgICkKICAgIHRyeToKICAgICAgICB3aXRoIHVybGxpYi5yZXF1ZXN0LnVybG9wZW4ocmVxX3B1dCkgYXMgcmVzcG9uc2U6CiAgICAgICAgICAgIHByaW50KGYnU3RhdHVzIHVwZGF0ZWQgc3VjY2Vzc2Z1bGx5OiB7c3RhdHVzfScpCiAgICBleGNlcHQgRXhjZXB0aW9uIGFzIGU6CiAgICAgICAgcHJpbnQoZidGYWlsZWQgdG8gdXBkYXRlIHN0YXR1czoge2V9JykKCmlmIF9fbmFtZV9fID09ICdfX21haW5fXyc6CiAgICBtYWluKCk=" | base64 -d > /home/ubuntu/update_status.py
+    cat > /home/ubuntu/update_status.py << 'PYEOF'
+import sys
+import os
+import json
+import base64
+import urllib.request
+import re
+
+def get_cloudflare_url():
+    log_path = '/var/log/cloudflared.log'
+    if os.path.exists(log_path):
+        try:
+            with open(log_path, 'r', encoding='utf-8', errors='ignore') as f:
+                content = f.read()
+            match = re.search(r'https://[a-z0-9-]+\.trycloudflare\.com', content)
+            if match:
+                return match.group(0)
+        except Exception:
+            pass
+    return None
+
+def main():
+    if len(sys.argv) < 3:
+        print('Usage: update_status.py <status> <message_or_log_file>')
+        sys.exit(1)
+    status = sys.argv[1]
+    log_source = sys.argv[2]
+
+    if os.path.exists(log_source):
+        try:
+            with open(log_source, 'r', encoding='utf-8', errors='ignore') as f:
+                log_content = f.read()
+        except Exception as e:
+            log_content = f'Error reading log file: {e}'
+    else:
+        log_content = log_source
+
+    token = os.environ.get('GITHUB_TOKEN')
+    repo = os.environ.get('GITHUB_REPO')
+    if not token or not repo:
+        print('Missing GITHUB_TOKEN or GITHUB_REPO env var')
+        sys.exit(1)
+
+    url = f'https://api.github.com/repos/{repo}/contents/setup_status.json'
+
+    # Get SHA if file exists to overwrite it
+    sha = None
+    req = urllib.request.Request(url, headers={'Authorization': f'token {token}', 'Accept': 'application/vnd.github+json'})
+    try:
+        with urllib.request.urlopen(req) as response:
+            res_data = json.loads(response.read().decode())
+            sha = res_data.get('sha')
+    except Exception:
+        pass
+
+    cf_url = get_cloudflare_url()
+    payload_data = {
+        'status': status,
+        'log': log_content
+    }
+    if cf_url:
+        payload_data['cloudflare_url'] = cf_url
+
+    content_bytes = json.dumps(payload_data).encode('utf-8')
+    content_b64 = base64.b64encode(content_bytes).decode('utf-8')
+
+    body = {
+        'message': f'Setup status: {status}',
+        'content': content_b64
+    }
+    if sha:
+        body['sha'] = sha
+
+    req_put = urllib.request.Request(url, data=json.dumps(body).encode('utf-8'),
+        headers={
+            'Authorization': f'token {token}',
+            'Accept': 'application/vnd.github+json',
+            'Content-Type': 'application/json'
+        },
+        method='PUT')
+    try:
+        with urllib.request.urlopen(req_put) as response:
+            print(f'Status updated successfully: {status}')
+    except Exception as e:
+        print(f'Failed to update status: {e}')
+
+if __name__ == '__main__':
+    main()
+PYEOF
     chown ubuntu:ubuntu /home/ubuntu/update_status.py
     chmod 755 /home/ubuntu/update_status.py
 
@@ -44,20 +133,6 @@ runcmd:
     systemctl enable docker
     systemctl start docker
     usermod -aG docker ubuntu
-
-    log "=== Step 1.5: Install and start Cloudflare Tunnel ==="
-    update_status INITIALIZING "Installing Cloudflare Tunnel..."
-    ARCH=$(dpkg --print-architecture)
-    log "Detected CPU architecture: $ARCH"
-    curl -L --output /usr/local/bin/cloudflared "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-$ARCH" 2>>"$LOG"
-    chmod +x /usr/local/bin/cloudflared
-
-    echo "W1VuaXRdCkRlc2NyaXB0aW9uPUNsb3VkZmxhcmUgVHVubmVsIFF1aWNrIFR1bm5lbApBZnRlcj1uZXR3b3JrLnRhcmdldAoKW1NlcnZpY2VdClR5cGU9c2ltcGxlClVzZXI9cm9vdApFeGVjU3RhcnQ9L3Vzci9sb2NhbC9iaW4vY2xvdWRmbGFyZWQgdHVubmVsIC0tdXJsIGh0dHBzOi8vbG9jYWxob3N0Ojg0NDMgLS1uby10bHMtdmVyaWZ5IC0tbm8tYXV0b3VwZGF0ZQpSZXN0YXJ0PWFsd2F5cwpSZXN0YXJ0U2VjPTUKU3RhbmRhcmRPdXRwdXQ9ZmlsZTovdmFyL2xvZy9jbG91ZGZsYXJlZC5sb2cKU3RhbmRhcmRFcnJvcj1maWxlOi92YXIvbG9nL2Nsb3VkZmxhcmVkLmxvZwoKW0luc3RhbGxdCldhbnRlZEJ5PW11bHRpLXVzZXIudGFyZ2V0" | base64 -d > /etc/systemd/system/cloudflared.service
-
-    systemctl daemon-reload
-    systemctl enable cloudflared
-    systemctl start cloudflared
-    log "Cloudflare Tunnel service started."
 
     log "=== Step 2: Clone repositories ==="
     update_status CLONING "Cloning CISO Assistant and installation repo..."
@@ -113,8 +188,271 @@ runcmd:
     docker compose exec -T backend python db/grc_profile_setup.py --profile sme 2>>"$LOG" || log "grc_profile_setup failed"
     docker compose exec -T backend python db/populate_privacy_custom.py      2>>"$LOG" || log "populate_privacy_custom failed"
 
+    log "=== Step 7: Install and configure Cloudflare Tunnel ==="
+    update_status CLOUDFLARE "Installing Cloudflare Tunnel with logfile..."
+    ARCH=$(dpkg --print-architecture)
+    curl -L --output /usr/local/bin/cloudflared "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-$ARCH" 2>>"$LOG"
+    chmod +x /usr/local/bin/cloudflared
+
+    # Write cloudflared service with logfile support
+    cat > /etc/systemd/system/cloudflared.service << 'SERVICEEOF'
+[Unit]
+Description=Cloudflare Tunnel Quick Tunnel
+After=network.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/local/bin/cloudflared tunnel --url https://localhost:8443 --no-tls-verify --no-autoupdate --logfile /var/log/cloudflared.log
+Restart=always
+RestartSec=5
+StandardOutput=file:/var/log/cloudflared.log
+StandardError=file:/var/log/cloudflared.log
+
+[Install]
+WantedBy=multi-user.target
+SERVICEEOF
+
+    systemctl daemon-reload
+    systemctl enable cloudflared
+    systemctl start cloudflared
+    # cloudflared.log wird von systemd erstellt (root:root) – ubuntu lesbar machen
+    touch /var/log/cloudflared.log
+    chown root:ubuntu /var/log/cloudflared.log
+    chmod 640 /var/log/cloudflared.log
+    log "Cloudflare Tunnel service started with logfile support."
+
+    log "=== Step 8: Deploy URL-Sync scripts ==="
+    update_status URL_SYNC "Deploying URL sync scripts..."
+    
+    # Create log directory (root:ubuntu damit Admin lesen kann)
+    mkdir -p /var/log/ciso-onboarding
+    chown root:ubuntu /var/log/ciso-onboarding
+    chmod 755 /var/log/ciso-onboarding
+
+    # Helper: get-cloudflare-tunnel-url.sh
+    cat > /usr/local/bin/get-cloudflare-tunnel-url.sh << 'SHSCRIPT'
+#!/bin/bash
+set -euo pipefail
+LOGFILE="${1:-/var/log/cloudflared.log}"
+TIMEOUT="${2:-30}"
+if [ ! -f "$LOGFILE" ]; then echo "ERROR: Logfile not found: $LOGFILE" >&2; exit 1; fi
+END=$((SECONDS + TIMEOUT))
+while [ $SECONDS -lt $END ]; do
+  URL=$(grep -oP 'https://[a-z0-9-]+\.trycloudflare\.com' "$LOGFILE" | tail -1)
+  if [ -n "$URL" ]; then echo "$URL"; exit 0; fi
+  sleep 2
+done
+echo "ERROR: No trycloudflare.com URL found after ${TIMEOUT}s" >&2
+exit 1
+SHSCRIPT
+    chmod 755 /usr/local/bin/get-cloudflare-tunnel-url.sh
+
+    # Helper: test-ciso-health.sh
+    cat > /usr/local/bin/test-ciso-health.sh << 'SHSCRIPT2'
+#!/bin/bash
+set -euo pipefail
+LOCAL_URL="${1:-https://localhost:8443}"
+PUBLIC_URL="${2:-}"
+TIMEOUT="${3:-10}"
+log() { echo "[$(date '+%H:%M:%S')] $*"; }
+fail() { log "FAILED: $*"; exit 1; }
+log "Checking local health: $LOCAL_URL/api/health/"
+LOCAL_RESULT=$(curl -k -s --max-time "$TIMEOUT" "$LOCAL_URL/api/health/" 2>&1) || true
+echo "$LOCAL_RESULT" | grep -q '"status":"ok"' && log "  [+] Local health: OK" || fail "Local health: $LOCAL_RESULT"
+LOCAL_WEB=$(curl -k -s -o /dev/null -w "%{http_code}" --max-time "$TIMEOUT" "$LOCAL_URL" 2>&1) || true
+[ "$LOCAL_WEB" = "302" ] || [ "$LOCAL_WEB" = "200" ] && log "  [+] Local web: HTTP $LOCAL_WEB" || fail "Local web: HTTP $LOCAL_WEB"
+if [ -n "$PUBLIC_URL" ]; then
+  log "Checking public health: $PUBLIC_URL/api/health/"
+  PUBLIC_RESULT=$(curl -s --max-time "$TIMEOUT" "$PUBLIC_URL/api/health/" 2>&1) || true
+  echo "$PUBLIC_RESULT" | grep -q '"status":"ok"' && log "  [+] Public health: OK" || fail "Public health: $PUBLIC_RESULT"
+  PUBLIC_WEB=$(curl -s -o /dev/null -w "%{http_code}" --max-time "$TIMEOUT" "$PUBLIC_URL" 2>&1) || true
+  [ "$PUBLIC_WEB" = "302" ] || [ "$PUBLIC_WEB" = "200" ] && log "  [+] Public web: HTTP $PUBLIC_WEB" || fail "Public web: HTTP $PUBLIC_WEB"
+fi
+log "All health checks passed."
+SHSCRIPT2
+    chmod 755 /usr/local/bin/test-ciso-health.sh
+
+    # Helper: backup-ciso-config.sh
+    cat > /usr/local/bin/backup-ciso-config.sh << 'SHSCRIPT3'
+#!/bin/bash
+set -euo pipefail
+CISO_DIR="${CISO_DIR:-/home/ubuntu/ciso-assistant}"
+BACKUP_BASE="${BACKUP_BASE:-/opt/ciso-setup-archive}"
+TIMESTAMP=$(date -u +%Y%m%d-%H%M%S)
+BACKUP_DIR="${BACKUP_BASE}/${TIMESTAMP}"
+mkdir -p "$BACKUP_DIR"
+[ -f "$CISO_DIR/docker-compose.yml" ] && cp "$CISO_DIR/docker-compose.yml" "$BACKUP_DIR/"
+[ -d "$CISO_DIR/db/caddy" ] && cp -r "$CISO_DIR/db/caddy" "$BACKUP_DIR/"
+echo "$BACKUP_DIR"
+SHSCRIPT3
+    chmod 755 /usr/local/bin/backup-ciso-config.sh
+
+    # Helper: patch-ciso-compose.py
+    cat > /usr/local/bin/patch-ciso-compose.py << 'PYEOF2'
+#!/usr/bin/env python3
+import sys, os, re, json, shutil, subprocess
+from datetime import datetime
+AUDIT_LOG = "/var/log/ciso-onboarding/setup-audit.jsonl"
+COMPOSE_PATH = "/home/ubuntu/ciso-assistant/docker-compose.yml"
+
+def log_audit(entry):
+    os.makedirs(os.path.dirname(AUDIT_LOG), exist_ok=True)
+    with open(AUDIT_LOG, "a") as f:
+        f.write(json.dumps(entry, default=str) + "\n")
+
+def patch(compose_path, public_url, public_host):
+    with open(compose_path, "r") as f:
+        content = f.read()
+    ts = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+    backup = f"/opt/ciso-setup-archive/{ts}/docker-compose.yml"
+    os.makedirs(os.path.dirname(backup), exist_ok=True)
+    shutil.copy2(compose_path, backup)
+
+    # Backend
+    content = re.sub(
+        r'(- ALLOWED_HOSTS=).*',
+        rf'\g<1>backend,localhost,{public_host}',
+        content
+    )
+    content = re.sub(
+        r'(- CISO_ASSISTANT_URL=).*',
+        rf'\g<1>{public_url}',
+        content
+    )
+    content = re.sub(
+        r'(- CSRF_TRUSTED_ORIGINS=).*',
+        r'\g<1>https://trycloudflare.com,https://*.trycloudflare.com',
+        content
+    )
+    # Huey (ALLOWED_HOSTS + CISO_ASSISTANT_URL only)
+    # These are already handled by the same patterns above since they use same env var names
+
+    # Frontend
+    content = re.sub(
+        r'(- PUBLIC_BACKEND_API_EXPOSED_URL=).*',
+        rf'\g<1>{public_url}/api',
+        content
+    )
+    content = re.sub(
+        r'(- ORIGIN=).*',
+        rf'\g<1>{public_url}',
+        content
+    )
+
+    # Caddy command block - replace the entire Caddyfile content
+    caddy_pattern = r'(localhost:443, )[a-z0-9-]+\.trycloudflare\.com(:443 \{)'
+    content = re.sub(caddy_pattern, rf'\g<1>{public_host}\g<2>', content)
+
+    with open(compose_path, "w") as f:
+        f.write(content)
+
+    # Validate
+    try:
+        r = subprocess.run(["docker", "compose", "config", "--quiet"],
+            cwd=os.path.dirname(compose_path), capture_output=True, timeout=30)
+        valid = r.returncode == 0
+    except Exception:
+        valid = False
+    if not valid:
+        shutil.copy2(backup, compose_path)
+        print("VALIDATION FAILED - backup restored")
+        log_audit({"timestamp": datetime.utcnow().isoformat()+"Z", "step":"patch_ciso_compose","status":"failed","public_url":public_url})
+        sys.exit(1)
+    print("Validation OK")
+    log_audit({"timestamp": datetime.utcnow().isoformat()+"Z", "step":"patch_ciso_compose","status":"success","public_url":public_url,"public_host":public_host,"backup_path":backup})
+
+if __name__ == "__main__":
+    url = sys.argv[1] if len(sys.argv) > 1 else None
+    if not url:
+        m = re.search(r'https://[a-z0-9-]+\.trycloudflare\.com', open("/var/log/cloudflared.log").read())
+        url = m.group(0) if m else None
+    if not url:
+        print("No URL found"); sys.exit(1)
+    host = url.replace("https://", "")
+    patch(COMPOSE_PATH, url, host)
+PYEOF2
+    chmod 755 /usr/local/bin/patch-ciso-compose.py
+
+    log "  [+] URL sync scripts deployed to /usr/local/bin/"
+
+    log "=== Step 9: Configure Mail (if NOTIFICATION_EMAIL provided) ==="
+    if [ -n "$NOTIFICATION_EMAIL" ]; then
+        update_status MAIL "Configuring mail notification for ${NOTIFICATION_EMAIL}..."
+        mkdir -p /etc/ciso-onboarding
+        cat > /etc/ciso-onboarding/mail.env << MAILEOF
+# CISO Assistant Mail Configuration
+# NOTE: SMTP credentials must be configured manually after setup
+SMTP_SERVER=smtp.email.eu-frankfurt-1.oci.oraclecloud.com
+SMTP_PORT=587
+SMTP_AUTH_USER=
+SMTP_AUTH_PASSWORD=
+MAIL_FROM=${NOTIFICATION_EMAIL}
+MAIL_TO=${NOTIFICATION_EMAIL}
+MAILEOF
+        chmod 600 /etc/ciso-onboarding/mail.env
+        chown root:root /etc/ciso-onboarding/mail.env
+        log "  [+] mail.env created for ${NOTIFICATION_EMAIL}"
+    else
+        log "  [-] No NOTIFICATION_EMAIL provided, skipping mail config."
+    fi
+
+    log "=== Step 10: Install URL-Sync Timer ==="
+    cat > /etc/systemd/system/ciso-tunnel-url-sync.service << 'SERVICEEOF2'
+[Unit]
+Description=CISO Assistant Cloudflare Tunnel URL Sync
+After=docker.service cloudflared.service
+Requires=docker.service cloudflared.service
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/usr/local/bin/patch-ciso-compose.py
+StandardOutput=file:/var/log/ciso-onboarding/cloudflare-url-sync.log
+StandardError=file:/var/log/ciso-onboarding/cloudflare-url-sync.log
+SERVICEEOF2
+
+    cat > /etc/systemd/system/ciso-tunnel-url-sync.timer << 'TIMEREOF'
+[Unit]
+Description=Check Cloudflare Tunnel URL every 5 minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+TIMEREOF
+
+    systemctl daemon-reload
+    systemctl enable ciso-tunnel-url-sync.timer
+    systemctl start ciso-tunnel-url-sync.timer
+    log "  [+] URL-Sync timer installed (every 5 min)"
+
     log "=== Setup COMPLETED successfully ==="
     update_status COMPLETED "$LOG"
+
+    # Send initial mail if email configured and URL available
+    if [ -n "$NOTIFICATION_EMAIL" ]; then
+        CF_URL=$(grep -oP 'https://[a-z0-9-]+\.trycloudflare\.com' /var/log/cloudflared.log | tail -1)
+        if [ -n "$CF_URL" ] && command -v curl &>/dev/null; then
+            log "Sending initial notification mail..."
+            cat > /tmp/ciso-welcome-mail.txt << MAILBODY
+From: ${NOTIFICATION_EMAIL}
+To: ${NOTIFICATION_EMAIL}
+Subject: CISO Assistant - Tunnel URL
+
+Deine CISO Assistant Instanz ist bereit:
+
+  ${CF_URL}
+
+Bei jeder Aenderung der Tunnel-URL erhaeltst du eine neue Benachrichtigung.
+MAILBODY
+            log "  [+] Welcome mail prepared (SMTP not configured for auto-send)"
+            log "  [+] Cloudflare URL: ${CF_URL}"
+        fi
+    fi
 
 log:
   output: '/var/log/cloud-init-ciso-setup.log'

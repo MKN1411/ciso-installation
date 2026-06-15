@@ -123,8 +123,9 @@ resource "oci_core_instance" "grc_instance" {
     ssh_authorized_keys = var.ssh_public_key
     # Injiziert das Cloud-Init Skript zur automatischen Docker- & CISO Assistant Installation
     user_data           = base64encode(templatefile("${path.module}/cloud-init.yaml", {
-      github_repo  = var.github_repo
-      github_token = var.github_token
+      github_repo       = var.github_repo
+      github_token      = var.github_token
+      notification_email = var.notification_email
     }))
   }
 

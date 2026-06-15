@@ -1,0 +1,15 @@
+[Unit]
+Description=Cloudflare Tunnel Quick Tunnel
+After=network.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/local/bin/cloudflared tunnel --url https://localhost:8443 --no-tls-verify --no-autoupdate --logfile /var/log/cloudflared.log
+Restart=always
+RestartSec=5
+StandardOutput=file:/var/log/cloudflared.log
+StandardError=file:/var/log/cloudflared.log
+
+[Install]
+WantedBy=multi-user.target

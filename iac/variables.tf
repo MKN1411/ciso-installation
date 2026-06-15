@@ -74,3 +74,9 @@ variable "github_token" {
   sensitive   = true
 }
 
+variable "notification_email" {
+  type        = string
+  description = "Email address for Cloudflare Tunnel URL notifications (Community version: sender = receiver)."
+  default     = ""
+}
+
