@@ -24,3 +24,7 @@ desktop.ini
 # IDEs
 .vscode/
 .idea/
+
+# Local working archives and generated analysis files
+_archive/
+repo-structure-*.txt
