@@ -130,7 +130,9 @@ def main():
                 "ssh_public_key": env_vars.get("SSH_PUBLIC_KEY"),
                 "availability_domain_index": ad_index,
                 "github_repo": env_vars.get("GITHUB_REPO", ""),
-                "github_token": env_vars.get("GITHUB_TOKEN", "")
+                "github_token": env_vars.get("GITHUB_TOKEN", ""),
+                "oci_user_ocid": env_vars.get("OCI_USER_OCID", ""),
+                "notification_email": env_vars.get("NOTIFICATION_EMAIL", "")
             }
         )
         try:
@@ -154,7 +156,9 @@ def main():
                 "ssh_public_key": env_vars.get("SSH_PUBLIC_KEY"),
                 "availability_domain_index": ad_index,
                 "github_repo": env_vars.get("GITHUB_REPO", ""),
-                "github_token": env_vars.get("GITHUB_TOKEN", "")
+                "github_token": env_vars.get("GITHUB_TOKEN", ""),
+                "oci_user_ocid": env_vars.get("OCI_USER_OCID", ""),
+                "notification_email": env_vars.get("NOTIFICATION_EMAIL", "")
             }
         )
         try:
@@ -211,7 +215,9 @@ def main():
                     "instance_ocpus": str(ocpus),
                     "instance_memory_gbs": str(memory),
                     "github_repo": env_vars.get("GITHUB_REPO", ""),
-                    "github_token": env_vars.get("GITHUB_TOKEN", "")
+                    "github_token": env_vars.get("GITHUB_TOKEN", ""),
+                    "oci_user_ocid": env_vars.get("OCI_USER_OCID", ""),
+                    "notification_email": env_vars.get("NOTIFICATION_EMAIL", "")
                 }
             )
             try:

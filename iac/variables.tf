@@ -80,3 +80,10 @@ variable "notification_email" {
   default     = ""
 }
 
+variable "oci_user_ocid" {
+  type        = string
+  description = "The OCID of the OCI user deploying the resources, required for generating SMTP credentials."
+  default     = ""
+}
+
+

@@ -122,12 +122,21 @@ resource "oci_core_instance" "grc_instance" {
       replace(
         replace(
           replace(
-            file("${path.module}/cloud-init.yaml"),
-            "@GITHUB_REPO@", var.github_repo
+            replace(
+              replace(
+                replace(
+                  file("${path.module}/cloud-init.yaml"),
+                  "@GITHUB_REPO@", var.github_repo
+                ),
+                "@GITHUB_TOKEN@", var.github_token
+              ),
+              "@NOTIFICATION_EMAIL@", var.notification_email
+            ),
+            "@SMTP_SERVER@", "smtp.email.${var.region}.oci.oraclecloud.com"
           ),
-          "@GITHUB_TOKEN@", var.github_token
+          "@SMTP_USER@", join("", oci_identity_smtp_credential.ciso_smtp_credential[*].username)
         ),
-        "@NOTIFICATION_EMAIL@", var.notification_email
+        "@SMTP_PASSWORD@", join("", oci_identity_smtp_credential.ciso_smtp_credential[*].password)
       )
     )
   }
@@ -157,4 +166,18 @@ data "oci_core_images" "ubuntu_images" {
   operating_system         = "Canonical Ubuntu"
   operating_system_version = "22.04"
   shape                    = var.instance_shape
+}
+
+# 9. OCI Approved Sender for Email Delivery
+resource "oci_email_sender" "ciso_email_sender" {
+  count          = var.notification_email != "" ? 1 : 0
+  compartment_id = var.compartment_ocid
+  email_address  = var.notification_email
+}
+
+# 10. OCI SMTP Credential for the user
+resource "oci_identity_smtp_credential" "ciso_smtp_credential" {
+  count       = var.oci_user_ocid != "" ? 1 : 0
+  description = "CISO Assistant SMTP Credentials"
+  user_id     = var.oci_user_ocid
 }

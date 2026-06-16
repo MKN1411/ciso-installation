@@ -372,10 +372,10 @@ runcmd:
     if [ -n "$NOTIFICATION_EMAIL" ]; then
       update_status MAIL "Configuring mail..."
       mkdir -p /etc/ciso-onboarding
-      echo "SMTP_SERVER=smtp.email.eu-frankfurt-1.oci.oraclecloud.com" > /etc/ciso-onboarding/mail.env
+      echo "SMTP_SERVER=@SMTP_SERVER@" > /etc/ciso-onboarding/mail.env
       echo "SMTP_PORT=587" >> /etc/ciso-onboarding/mail.env
-      echo "SMTP_AUTH_USER=" >> /etc/ciso-onboarding/mail.env
-      echo "SMTP_AUTH_PASSWORD=" >> /etc/ciso-onboarding/mail.env
+      echo "SMTP_AUTH_USER=@SMTP_USER@" >> /etc/ciso-onboarding/mail.env
+      echo "SMTP_AUTH_PASSWORD=@SMTP_PASSWORD@" >> /etc/ciso-onboarding/mail.env
       echo "MAIL_FROM=@NOTIFICATION_EMAIL@" >> /etc/ciso-onboarding/mail.env
       echo "MAIL_TO=@NOTIFICATION_EMAIL@" >> /etc/ciso-onboarding/mail.env
       chmod 600 /etc/ciso-onboarding/mail.env
