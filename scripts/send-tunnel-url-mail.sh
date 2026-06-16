@@ -11,9 +11,56 @@ log() { echo "[$(date '+%H:%M:%S')] $*"; }
 MAIL_ENV="/etc/ciso-onboarding/mail.env"
 AUDIT_LOG="/var/log/ciso-onboarding/setup-audit.jsonl"
 
+# Update mail.env from OCI metadata service if running on OCI
+if curl -s -I -m 2 -H "Authorization: Bearer Oracle" http://169.254.169.254/opc/v2/instance/ >/dev/null; then
+    log "Checking for updated SMTP credentials from OCI metadata..."
+    LATEST_USER=$(curl -H "Authorization: Bearer Oracle" -s http://169.254.169.254/opc/v2/instance/metadata/smtp_user || true)
+    LATEST_PASS=$(curl -H "Authorization: Bearer Oracle" -s http://169.254.169.254/opc/v2/instance/metadata/smtp_password || true)
+    NOTIF_EMAIL=$(curl -H "Authorization: Bearer Oracle" -s http://169.254.169.254/opc/v2/instance/metadata/notification_email || true)
+    
+    if [ -n "$LATEST_USER" ] && [ -n "$LATEST_PASS" ]; then
+        CURRENT_USER=""
+        CURRENT_PASS=""
+        if [ -f "$MAIL_ENV" ]; then
+            CURRENT_USER=$(grep "^SMTP_AUTH_USER=" "$MAIL_ENV" | cut -d= -f2- || true)
+            CURRENT_PASS=$(grep "^SMTP_AUTH_PASSWORD=" "$MAIL_ENV" | cut -d= -f2- || true)
+        fi
+        
+        if [ "$LATEST_USER" != "$CURRENT_USER" ] || [ "$LATEST_PASS" != "$CURRENT_PASS" ] || [ ! -f "$MAIL_ENV" ]; then
+            log "SMTP credentials have changed or mail.env is missing. Updating $MAIL_ENV..."
+            # Query region from OCI metadata
+            OCI_REGION=$(curl -H "Authorization: Bearer Oracle" -s http://169.254.169.254/opc/v2/instance/region || true)
+            if [ -z "$OCI_REGION" ]; then OCI_REGION="eu-frankfurt-1"; fi
+            
+            # Read existing values if any
+            EXISTING_FROM=""
+            EXISTING_TO=""
+            if [ -f "$MAIL_ENV" ]; then
+                EXISTING_FROM=$(grep "^MAIL_FROM=" "$MAIL_ENV" | cut -d= -f2- || true)
+                EXISTING_TO=$(grep "^MAIL_TO=" "$MAIL_ENV" | cut -d= -f2- || true)
+            fi
+            
+            M_FROM="${EXISTING_FROM:-${NOTIF_EMAIL}}"
+            M_TO="${EXISTING_TO:-${NOTIF_EMAIL}}"
+            
+            mkdir -p "$(dirname "$MAIL_ENV")"
+            cat > "$MAIL_ENV" << EOF
+SMTP_SERVER=smtp.email.${OCI_REGION}.oci.oraclecloud.com
+SMTP_PORT=587
+SMTP_AUTH_USER=${LATEST_USER}
+SMTP_AUTH_PASSWORD=${LATEST_PASS}
+MAIL_FROM=${M_FROM}
+MAIL_TO=${M_TO}
+EOF
+            chmod 600 "$MAIL_ENV"
+            chown root:root "$MAIL_ENV" 2>/dev/null || true
+        fi
+    fi
+fi
+
 # Load mail config
 if [ ! -f "$MAIL_ENV" ]; then
-    log "ERROR: $MAIL_ENV not found. Run configure-mail-env.sh first."
+    log "ERROR: $MAIL_ENV not found."
     exit 1
 fi
 source "$MAIL_ENV"

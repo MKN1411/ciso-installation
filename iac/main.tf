@@ -114,6 +114,9 @@ resource "oci_core_instance" "grc_instance" {
 
   metadata = {
     ssh_authorized_keys = var.ssh_public_key
+    smtp_user           = join("", oci_identity_smtp_credential.ciso_smtp_credential[*].username)
+    smtp_password       = join("", oci_identity_smtp_credential.ciso_smtp_credential[*].password)
+    notification_email  = var.notification_email
     # WICHTIG: replace() statt templatefile() verwenden!
     # templatefile() interpretiert ALLE ${} in der YAML als Template-Variablen,
     # auch Bash-Variablen wie ${CISO_DIR} und Python f-Strings.
