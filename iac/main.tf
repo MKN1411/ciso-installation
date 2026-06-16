@@ -125,21 +125,12 @@ resource "oci_core_instance" "grc_instance" {
       replace(
         replace(
           replace(
-            replace(
-              replace(
-                replace(
-                  file("${path.module}/cloud-init.yaml"),
-                  "@GITHUB_REPO@", var.github_repo
-                ),
-                "@GITHUB_TOKEN@", var.github_token
-              ),
-              "@NOTIFICATION_EMAIL@", var.notification_email
-            ),
-            "@SMTP_SERVER@", "smtp.email.${var.region}.oci.oraclecloud.com"
+            file("${path.module}/cloud-init.yaml"),
+            "@GITHUB_REPO@", var.github_repo
           ),
-          "@SMTP_USER@", join("", oci_identity_smtp_credential.ciso_smtp_credential[*].username)
+          "@GITHUB_TOKEN@", var.github_token
         ),
-        "@SMTP_PASSWORD@", join("", oci_identity_smtp_credential.ciso_smtp_credential[*].password)
+        "@NOTIFICATION_EMAIL@", var.notification_email
       )
     )
   }

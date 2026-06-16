@@ -303,6 +303,39 @@ def main():
             print(f"[ERROR] Failed to create stack: {e}")
             sys.exit(1)
         
+    # Detect actual running VM shape/AD to avoid Terraform destroying/recreating it
+    try:
+        compute_client = oci.core.ComputeClient(config)
+        instances = call_oci_with_retry(
+            compute_client.list_instances,
+            compartment_id=compartment_id,
+            display_name="ciso-assistant-vps"
+        ).data
+        
+        # Find active instance
+        active_vm = None
+        for inst in instances:
+            if inst.lifecycle_state in ["RUNNING", "STOPPED", "PROVISIONING"]:
+                active_vm = inst
+                break
+        
+        if active_vm:
+            log(f"Detected live instance on OCI: {active_vm.id} (Shape: {active_vm.shape})")
+            existing_variables["instance_shape"] = active_vm.shape
+            if active_vm.shape_config:
+                existing_variables["instance_ocpus"] = str(active_vm.shape_config.ocpus)
+                existing_variables["instance_memory_gbs"] = str(active_vm.shape_config.memory_in_gbs)
+            
+            # Map AD name to index
+            identity_client = oci.identity.IdentityClient(config)
+            ads = call_oci_with_retry(identity_client.list_availability_domains, compartment_id).data
+            for idx, ad in enumerate(ads):
+                if ad.name == active_vm.availability_domain:
+                    existing_variables["availability_domain_index"] = str(idx)
+                    break
+    except Exception as e:
+        log(f"[WARNING] Could not query actual running instance shape: {e}")
+
     # Define shapes and AD tries based on deployment_mode
     shapes_to_try = [
         {"shape": "VM.Standard.A1.Flex", "ocpus": 2, "memory": 8}, # Always Free ARM

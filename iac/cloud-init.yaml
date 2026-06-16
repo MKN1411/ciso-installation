@@ -374,12 +374,19 @@ runcmd:
     if [ -n "$NOTIFICATION_EMAIL" ]; then
       update_status MAIL "Configuring mail..."
       mkdir -p /etc/ciso-onboarding
-      echo "SMTP_SERVER=@SMTP_SERVER@" > /etc/ciso-onboarding/mail.env
+      
+      # Query OCI IMDS dynamically for credentials to keep user_data static and prevent VM recreation on key rotation
+      SMTP_USER=$(curl -H "Authorization: Bearer Oracle" -s http://169.254.169.254/opc/v2/instance/metadata/smtp_user || true)
+      SMTP_PASSWORD=$(curl -H "Authorization: Bearer Oracle" -s http://169.254.169.254/opc/v2/instance/metadata/smtp_password || true)
+      OCI_REGION=$(curl -H "Authorization: Bearer Oracle" -s http://169.254.169.254/opc/v2/instance/region || true)
+      if [ -z "$OCI_REGION" ]; then OCI_REGION="eu-frankfurt-1"; fi
+      
+      echo "SMTP_SERVER=smtp.email.${OCI_REGION}.oci.oraclecloud.com" > /etc/ciso-onboarding/mail.env
       echo "SMTP_PORT=587" >> /etc/ciso-onboarding/mail.env
-      echo "SMTP_AUTH_USER=@SMTP_USER@" >> /etc/ciso-onboarding/mail.env
-      echo "SMTP_AUTH_PASSWORD=@SMTP_PASSWORD@" >> /etc/ciso-onboarding/mail.env
-      echo "MAIL_FROM=@NOTIFICATION_EMAIL@" >> /etc/ciso-onboarding/mail.env
-      echo "MAIL_TO=@NOTIFICATION_EMAIL@" >> /etc/ciso-onboarding/mail.env
+      echo "SMTP_AUTH_USER=${SMTP_USER}" >> /etc/ciso-onboarding/mail.env
+      echo "SMTP_AUTH_PASSWORD=${SMTP_PASSWORD}" >> /etc/ciso-onboarding/mail.env
+      echo "MAIL_FROM=$NOTIFICATION_EMAIL" >> /etc/ciso-onboarding/mail.env
+      echo "MAIL_TO=$NOTIFICATION_EMAIL" >> /etc/ciso-onboarding/mail.env
       chmod 600 /etc/ciso-onboarding/mail.env
       chown root:root /etc/ciso-onboarding/mail.env
     fi
