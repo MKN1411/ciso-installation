@@ -58,12 +58,17 @@ EOF
     fi
 fi
 
-# Load mail config
+# Load mail config safely without sourcing (executing) it
 if [ ! -f "$MAIL_ENV" ]; then
     log "ERROR: $MAIL_ENV not found."
     exit 1
 fi
-source "$MAIL_ENV"
+SMTP_SERVER=$(grep -E '^SMTP_SERVER=' "$MAIL_ENV" | cut -d= -f2- | tr -d '\r' | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")
+SMTP_PORT=$(grep -E '^SMTP_PORT=' "$MAIL_ENV" | cut -d= -f2- | tr -d '\r' | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")
+SMTP_AUTH_USER=$(grep -E '^SMTP_AUTH_USER=' "$MAIL_ENV" | cut -d= -f2- | tr -d '\r' | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")
+SMTP_AUTH_PASSWORD=$(grep -E '^SMTP_AUTH_PASSWORD=' "$MAIL_ENV" | cut -d= -f2- | tr -d '\r' | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")
+MAIL_FROM=$(grep -E '^MAIL_FROM=' "$MAIL_ENV" | cut -d= -f2- | tr -d '\r' | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")
+MAIL_TO=$(grep -E '^MAIL_TO=' "$MAIL_ENV" | cut -d= -f2- | tr -d '\r' | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")
 
 # Get current tunnel URL
 URL="${1:-}"
