@@ -86,17 +86,4 @@ variable "oci_user_ocid" {
   default     = ""
 }
 
-variable "existing_smtp_user" {
-  type        = string
-  description = "Existing SMTP username to reuse (if stored in GitHub Secrets)."
-  default     = ""
-}
-
-variable "existing_smtp_password" {
-  type        = string
-  description = "Existing SMTP password to reuse (if stored in GitHub Secrets)."
-  default     = ""
-  sensitive   = true
-}
-
 

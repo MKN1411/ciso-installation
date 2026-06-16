@@ -113,6 +113,29 @@ def call_oci_with_retry(api_func, *args, **kwargs):
             delay *= 2
     raise Exception("Max retries exceeded for OCI API call.")
 
+def cleanup_existing_smtp_credentials(config):
+    try:
+        log("Checking for existing SMTP credentials in OCI to clean up / rotate...")
+        identity_client = oci.identity.IdentityClient(config)
+        # List credentials
+        credentials = call_oci_with_retry(
+            identity_client.list_smtp_credentials,
+            user_id=config["user"]
+        ).data
+        
+        for cred in credentials:
+            # Check description or match
+            if cred.description == "CISO Assistant SMTP Credentials":
+                log(f"Deleting old SMTP credential: {cred.id} (Username: {cred.username})")
+                call_oci_with_retry(
+                    identity_client.delete_smtp_credential,
+                    user_id=config["user"],
+                    smtp_credential_id=cred.id
+                )
+                log(f"Successfully deleted old SMTP credential: {cred.id}")
+    except Exception as e:
+        log(f"[WARNING] Failed to clean up existing SMTP credentials in OCI: {e}")
+
 def main():
     log("Starting OCI GRC Infrastructure Deployment...")
     env_vars = load_env()
@@ -135,6 +158,10 @@ def main():
     except Exception as e:
         print(f"[ERROR] Invalid OCI configuration: {e}")
         sys.exit(1)
+
+    # 1.1 Cleanup existing credentials if rotation is triggered or new installation
+    if config["user"] and not existing_smtp_password:
+        cleanup_existing_smtp_credentials(config)
         
     # 2. Package IaC files
     zip_path = create_iac_zip()
@@ -238,9 +265,7 @@ def main():
                 "github_repo": env_vars.get("GITHUB_REPO", ""),
                 "github_token": env_vars.get("GITHUB_TOKEN", ""),
                 "oci_user_ocid": env_vars.get("OCI_USER_OCID", ""),
-                "notification_email": env_vars.get("NOTIFICATION_EMAIL", ""),
-                "existing_smtp_user": existing_smtp_user,
-                "existing_smtp_password": existing_smtp_password
+                "notification_email": env_vars.get("NOTIFICATION_EMAIL", "")
             }
         )
         try:
@@ -266,9 +291,7 @@ def main():
                 "github_repo": env_vars.get("GITHUB_REPO", ""),
                 "github_token": env_vars.get("GITHUB_TOKEN", ""),
                 "oci_user_ocid": env_vars.get("OCI_USER_OCID", ""),
-                "notification_email": env_vars.get("NOTIFICATION_EMAIL", ""),
-                "existing_smtp_user": existing_smtp_user,
-                "existing_smtp_password": existing_smtp_password
+                "notification_email": env_vars.get("NOTIFICATION_EMAIL", "")
             }
         )
         try:
@@ -344,9 +367,7 @@ def main():
                     "github_repo": env_vars.get("GITHUB_REPO", ""),
                     "github_token": env_vars.get("GITHUB_TOKEN", ""),
                     "oci_user_ocid": env_vars.get("OCI_USER_OCID", ""),
-                    "notification_email": env_vars.get("NOTIFICATION_EMAIL", ""),
-                    "existing_smtp_user": existing_smtp_user,
-                    "existing_smtp_password": existing_smtp_password
+                    "notification_email": env_vars.get("NOTIFICATION_EMAIL", "")
                 }
             )
             try:
@@ -424,11 +445,11 @@ def main():
                             new_smtp_password = out.output_value
                     print("============================================================\n")
 
-                    # Save SMTP credentials to GitHub Secrets if they were newly generated
+                    # Save SMTP credentials to GitHub Secrets if they were newly generated or rotated
                     github_token = env_vars.get("GITHUB_TOKEN")
                     github_repo = env_vars.get("GITHUB_REPO")
-                    if not existing_smtp_user and new_smtp_user and new_smtp_password and github_token and github_repo:
-                        log("Saving newly generated OCI SMTP credentials securely to GitHub Secrets...")
+                    if not existing_smtp_password and new_smtp_user and new_smtp_password and github_token and github_repo:
+                        log("Saving newly generated/rotated OCI SMTP credentials securely to GitHub Secrets...")
                         save_github_secret(github_repo, github_token, "OCI_SMTP_USER", new_smtp_user)
                         save_github_secret(github_repo, github_token, "OCI_SMTP_PASSWORD", new_smtp_password)
                     

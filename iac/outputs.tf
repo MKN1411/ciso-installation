@@ -28,12 +28,12 @@ output "bastion_ssh_command_template" {
 }
 
 output "smtp_username" {
-  value       = var.existing_smtp_user != "" ? var.existing_smtp_user : join("", oci_identity_smtp_credential.ciso_smtp_credential[*].username)
+  value       = join("", oci_identity_smtp_credential.ciso_smtp_credential[*].username)
   description = "SMTP username configured for the VM."
 }
 
 output "smtp_password" {
-  value       = var.existing_smtp_password != "" ? var.existing_smtp_password : join("", oci_identity_smtp_credential.ciso_smtp_credential[*].password)
+  value       = join("", oci_identity_smtp_credential.ciso_smtp_credential[*].password)
   description = "SMTP password configured for the VM."
   sensitive   = true
 }

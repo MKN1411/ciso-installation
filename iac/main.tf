@@ -134,9 +134,9 @@ resource "oci_core_instance" "grc_instance" {
             ),
             "@SMTP_SERVER@", "smtp.email.${var.region}.oci.oraclecloud.com"
           ),
-          "@SMTP_USER@", var.existing_smtp_user != "" ? var.existing_smtp_user : join("", oci_identity_smtp_credential.ciso_smtp_credential[*].username)
+          "@SMTP_USER@", join("", oci_identity_smtp_credential.ciso_smtp_credential[*].username)
         ),
-        "@SMTP_PASSWORD@", var.existing_smtp_password != "" ? var.existing_smtp_password : join("", oci_identity_smtp_credential.ciso_smtp_credential[*].password)
+        "@SMTP_PASSWORD@", join("", oci_identity_smtp_credential.ciso_smtp_credential[*].password)
       )
     )
   }
@@ -177,7 +177,7 @@ resource "oci_email_sender" "ciso_email_sender" {
 
 # 10. OCI SMTP Credential for the user
 resource "oci_identity_smtp_credential" "ciso_smtp_credential" {
-  count       = (var.oci_user_ocid != "" && var.existing_smtp_user == "") ? 1 : 0
+  count       = var.oci_user_ocid != "" ? 1 : 0
   description = "CISO Assistant SMTP Credentials"
   user_id     = var.oci_user_ocid
 }
