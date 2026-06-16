@@ -164,7 +164,7 @@ data "oci_core_images" "ubuntu_images" {
 
 # 9. OCI Approved Sender for Email Delivery
 resource "oci_email_sender" "ciso_email_sender" {
-  count          = var.notification_email != "" ? 1 : 0
+  count          = (var.notification_email != "" && var.create_email_sender) ? 1 : 0
   compartment_id = var.compartment_ocid
   email_address  = var.notification_email
 }

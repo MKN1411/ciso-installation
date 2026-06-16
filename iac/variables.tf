@@ -86,4 +86,10 @@ variable "oci_user_ocid" {
   default     = ""
 }
 
+variable "create_email_sender" {
+  type        = bool
+  description = "Whether to create the Approved Sender resource in OCI."
+  default     = true
+}
+
 

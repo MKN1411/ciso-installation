@@ -179,6 +179,26 @@ def main():
     resource_manager_client = oci.resource_manager.ResourceManagerClient(config)
     compartment_id = env_vars.get("OCI_COMPARTMENT_OCID")
     
+    # 3.1 Check if the Approved Sender already exists in OCI
+    notification_email = env_vars.get("NOTIFICATION_EMAIL", "")
+    create_email_sender = "true"
+    if notification_email:
+        try:
+            log(f"Checking if Approved Sender already exists for email: {notification_email}...")
+            email_client = oci.email.EmailClient(config)
+            senders = call_oci_with_retry(
+                email_client.list_senders,
+                compartment_id=compartment_id,
+                email_address=notification_email
+            ).data
+            if senders:
+                log(f"Approved Sender for '{notification_email}' already exists in OCI (ID: {senders[0].id}). Skipping creation in Terraform.")
+                create_email_sender = "false"
+            else:
+                log(f"Approved Sender for '{notification_email}' does not exist yet. Will create it.")
+        except Exception as e:
+            log(f"[WARNING] Failed to query OCI Approved Senders: {e}")
+    
     # 4. Check if stack already exists
     log("Checking for existing OCI Resource Manager Stack...")
     stack_id = None
@@ -265,7 +285,8 @@ def main():
                 "github_repo": env_vars.get("GITHUB_REPO", ""),
                 "github_token": env_vars.get("GITHUB_TOKEN", ""),
                 "oci_user_ocid": env_vars.get("OCI_USER_OCID", ""),
-                "notification_email": env_vars.get("NOTIFICATION_EMAIL", "")
+                "notification_email": env_vars.get("NOTIFICATION_EMAIL", ""),
+                "create_email_sender": create_email_sender
             }
         )
         try:
@@ -291,7 +312,8 @@ def main():
                 "github_repo": env_vars.get("GITHUB_REPO", ""),
                 "github_token": env_vars.get("GITHUB_TOKEN", ""),
                 "oci_user_ocid": env_vars.get("OCI_USER_OCID", ""),
-                "notification_email": env_vars.get("NOTIFICATION_EMAIL", "")
+                "notification_email": env_vars.get("NOTIFICATION_EMAIL", ""),
+                "create_email_sender": create_email_sender
             }
         )
         try:
@@ -400,7 +422,8 @@ def main():
                     "github_repo": env_vars.get("GITHUB_REPO", ""),
                     "github_token": env_vars.get("GITHUB_TOKEN", ""),
                     "oci_user_ocid": env_vars.get("OCI_USER_OCID", ""),
-                    "notification_email": env_vars.get("NOTIFICATION_EMAIL", "")
+                    "notification_email": env_vars.get("NOTIFICATION_EMAIL", ""),
+                    "create_email_sender": create_email_sender
                 }
             )
             try:
